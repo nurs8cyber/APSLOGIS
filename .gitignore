@@ -1,0 +1,4 @@
+.installed
+uploads/*
+!uploads/.htaccess
+node_modules/

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Logistik - RS Kartika Husada</title>
+    
+    <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+    <link href="assets/css/tailwind.css" rel="stylesheet">
+    <link href="assets/vendor/fa/all.min.css" rel="stylesheet">
+    <link href="assets/vendor/inter/inter.css" rel="stylesheet">
+    <script src="assets/vendor/chart.umd.js"></script>
+    <script src="assets/vendor/xlsx.full.min.js"></script>
+    <script src="assets/vendor/JsBarcode.all.min.js"></script>
+    
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body class="text-gray-800 antialiased overflow-x-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/70 z-[100] flex flex-col items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500 mb-4"></div>
+        <p id="loading-text" class="text-white font-semibold tracking-wider">Memuat Sistem...</p>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="custom-alert" class="fixed inset-0 bg-black/50 z-[90] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center transform scale-100 fade-in border-t-4 border-blue-500">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-50 mb-4 border border-blue-100">
+                <i class="fas fa-info-circle text-3xl text-blue-600"></i>
+            </div>
+            <h3 id="alert-title" class="text-xl font-bold text-gray-900 mb-2">Info</h3>
+            <p id="alert-msg" class="text-sm text-gray-600 mb-6 leading-relaxed"></p>
+            <button onclick="UI.closeAlert()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition duration-200">Mengerti</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="custom-confirm" class="fixed inset-0 bg-black/50 z-[90] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center fade-in border-t-4 border-yellow-500">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-50 mb-4 border border-yellow-100">
+                <i class="fas fa-exclamation-triangle text-3xl text-yellow-600"></i>
+            </div>
+            <h3 id="confirm-title" class="text-xl font-bold text-gray-900 mb-2">Konfirmasi</h3>
+            <p id="confirm-msg" class="text-sm text-gray-600 mb-6 leading-relaxed"></p>
+            <div class="flex gap-3">
+                <button onclick="UI.closeConfirm(false)" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-lg transition duration-200 border">Batal</button>
+                <button id="btn-confirm-action" onclick="UI.closeConfirm(true)" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md transition duration-200">Ya</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 1. VIEW LOGIN & REGISTER ================= -->
+    <div id="view-login" class="min-h-screen flex hidden-view fade-in login-bg-split">
+        <div class="w-full flex items-center justify-center p-4 lg:p-12 relative z-10">
+            <div class="bg-white w-full max-w-5xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col md:flex-row">
+                
+                <!-- PANEL KIRI (Identitas & Iklan) -->
+                <div class="w-full md:w-1/2 p-8 lg:p-10 flex flex-col items-center justify-center bg-gray-50 border-r border-gray-200">
+                    <img src="assets/img/logo.png" onerror="this.onerror=null;this.src='assets/img/logo.svg'" alt="Logo RS" class="h-24 w-24 object-contain mb-4 rounded-full shadow-md bg-white p-1 border-2 border-green-100">
+                    
+                    <h1 class="text-2xl font-extrabold text-[#114B3E] text-center leading-tight mb-1">
+                        RS KARTIKA HUSADA<br>JATI ASIH
+                    </h1>
+                    <p class="text-gray-500 font-medium text-sm text-center mb-6">MAU IKLAN HUBUNGI OPRATOR :D</p>
+
+                    <!-- KOTAK PAPAN IKLAN -->
+                    <div class="w-full aspect-video bg-black rounded-lg overflow-hidden relative shadow-lg mb-6 flex items-center justify-center border-4 border-gray-100" id="ads-container">
+                        <!-- Konten diisi JS -->
+                    </div>
+
+                    <!-- Kata Mutiara -->
+                    <div class="bg-green-50 w-full p-4 rounded-xl border border-green-100 shadow-inner mt-auto relative">
+                        <i class="fas fa-quote-left text-3xl text-green-200 absolute top-2 left-3 opacity-50"></i>
+                        <p id="quote-text" class="text-gray-700 italic font-medium relative z-10 text-sm pl-6">"Pelayanan yang baik dimulai dari pengelolaan yang baik."</p>
+                        <p id="quote-author" class="text-xs text-gray-500 mt-2 font-bold text-right">- Manajemen RS</p>
+                    </div>
+                </div>
+
+                <!-- PANEL KANAN (Form Login) -->
+                <div class="w-full md:w-1/2 p-8 lg:p-12 flex flex-col justify-center bg-white">
+                    <h2 class="text-2xl lg:text-3xl font-bold text-[#1C3664] mb-8 text-center border-b pb-4">AYO MASUK GES :)</h2>
+                    
+                    <form id="form-login" onsubmit="Auth.handleLogin(event)" class="w-full max-w-sm mx-auto">
+                        <div class="mb-5">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Nama / Username</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user text-gray-400"></i>
+                                </div>
+                                <input type="text" id="login-name" required class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition bg-gray-50 focus:bg-white" placeholder="Masukkan username">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Kata Sandi</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-gray-400"></i>
+                                </div>
+                                <input type="password" id="login-pass" required class="w-full pl-10 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition bg-gray-50 focus:bg-white" placeholder="••••••••">
+                                <button type="button" onclick="UI.togglePassword('login-pass', 'login-eye')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 cursor-pointer">
+                                    <i class="fas fa-eye" id="login-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold py-3.5 rounded-lg shadow-lg hover:shadow-xl transition duration-300 text-lg mb-6 tracking-wide">MASUK</button>
+                        
+                        <div class="flex justify-between items-center text-sm font-semibold text-[#1C3664] border-b pb-6 mb-6">
+                            <a href="#" onclick="UI.showAlert('Lupa Sandi', 'Silakan hubungi Operator / Tim IT untuk mereset kata sandi Anda.')" class="hover:text-blue-500 transition cursor-pointer">Lupa Sandi?</a>
+                            <span class="text-gray-300">|</span>
+                            <a href="#" onclick="UI.switchView('view-register')" class="hover:text-blue-500 transition cursor-pointer">Daftar Akun Baru</a>
+                        </div>
+                        
+                        <div class="text-center text-xs text-gray-400">
+                            Created by <span class="font-bold text-gray-500">"YouTube Nur S8"</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REGISTER VIEW -->
+    <div id="view-register" class="min-h-screen flex hidden-view items-center justify-center p-4 fade-in relative login-bg-split">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full relative z-10 border-t-8 border-[#22c55e]">
+            <button onclick="UI.switchView('view-login')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition cursor-pointer"><i class="fas fa-times text-xl"></i></button>
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Daftar Akun Baru</h2>
+                <p class="text-sm text-gray-500">Sistem Logistik RS Kartika Husada</p>
+            </div>
+            
+            <form id="form-register" onsubmit="Auth.handleRegister(event)" class="space-y-4">
+                <div class="flex flex-col items-center justify-center mb-2">
+                    <img id="reg-photo-preview" src="assets/img/logo.svg" class="h-20 w-20 rounded-full border-4 border-gray-100 object-cover shadow-sm mb-2">
+                    <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full transition border border-blue-200">
+                        <i class="fas fa-camera mr-1"></i> Upload Foto Profil
+                        <input type="file" id="reg-photo" accept="image/*" class="hidden" onchange="Utils.previewImage(event, 'reg-photo-preview')">
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Jabatan <span class="text-red-500">*</span></label>
+                    <select id="reg-role" required class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500 outline-none transition" onchange="Auth.toggleUnitSelect('reg-role', 'reg-unit-container')">
+                        <option value="">-- Pilih Jabatan --</option>
+                        <option value="KEPALA UNIT">Kepala Unit (Requestor)</option>
+                        <option value="MANAGER">Manager (Approver)</option>
+                        <option value="DIREKTUR">Direktur (Viewer)</option>
+                    </select>
+                </div>
+
+                <div id="reg-unit-container">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Unit Kerja / Ruangan <span class="text-red-500">*</span></label>
+                    <input type="text" id="reg-unit" placeholder="Cth: Manajemen Pusat" required class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-50 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap / Username <span class="text-red-500">*</span></label>
+                    <input type="text" id="reg-name" required class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-50 outline-none transition" placeholder="Nama Anda">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">No. WhatsApp (Aktif) <span class="text-red-500">*</span></label>
+                    <input type="number" id="reg-wa" required class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-50 outline-none transition" placeholder="08123456789">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Buat Kata Sandi <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="password" id="reg-pass" required minlength="4" class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-50 outline-none pr-10 transition" placeholder="Minimal 4 karakter">
+                        <button type="button" onclick="UI.togglePassword('reg-pass', 'reg-eye')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 cursor-pointer">
+                            <i class="fas fa-eye" id="reg-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#1C3664] hover:bg-[#114B3E] text-white font-bold py-3.5 rounded-lg shadow-lg transition tracking-wide">Kirim Pendaftaran</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= 2. VIEW DASHBOARD ================= -->
+    <div id="view-dashboard" class="hidden-view h-screen flex overflow-hidden bg-gray-50 fade-in">
+        
+        <!-- Sidebar Menu Modern -->
+        <aside class="w-64 bg-[#0B2136] text-white flex flex-col shadow-2xl transition-all duration-300 z-20 flex-shrink-0 absolute md:relative h-full transform -translate-x-full md:translate-x-0" id="sidebar">
+            <div class="p-4 border-b border-gray-700/50 flex items-center gap-3 bg-[#071726] cursor-pointer" onclick="window.location.reload()">
+                <div class="flex-1">
+                    <h2 class="font-extrabold text-sm tracking-wide text-blue-400">RS KARTIKA HUSADA</h2>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">Sistem Logistik</p>
+                </div>
+                <button class="md:hidden ml-auto text-gray-400 hover:text-white" onclick="UI.toggleSidebar()"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <!-- Profil User -->
+            <div class="p-5 border-b border-gray-700/50 bg-[#0A1A2A] cursor-pointer hover:bg-[#112a42] transition group relative" onclick="Auth.openProfileModal()" title="Klik untuk edit profil">
+                <div class="flex items-center gap-3">
+                    <img id="sidebar-profile-img" src="" class="h-12 w-12 rounded-full border-2 border-blue-400 object-cover shadow-md group-hover:scale-105 transition">
+                    <div class="overflow-hidden flex-1">
+                        <p class="text-[11px] text-gray-400 font-semibold mb-0.5 capitalize" id="sidebar-greeting">Halo,</p>
+                        <p id="display-name" class="font-bold text-sm truncate text-white">Nama</p>
+                        <p id="display-role" class="text-[10px] bg-blue-900/50 px-2 py-0.5 rounded-full text-blue-200 inline-block mt-1 border border-blue-800/50 truncate max-w-full">Role</p>
+                    </div>
+                </div>
+                <div class="absolute inset-y-0 right-4 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fas fa-pencil-alt text-blue-400 text-sm"></i>
+                </div>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto py-6 custom-scrollbar">
+                <ul class="space-y-1.5 px-3" id="nav-menu">
+                    <!-- Menu Injected by JS -->
+                </ul>
+            </nav>
+
+            <div class="p-4 border-t border-gray-700/50">
+                <button onclick="Auth.logout()" class="w-full flex items-center justify-center gap-2 bg-red-600/90 hover:bg-red-600 text-white py-2.5 rounded-lg shadow font-semibold transition text-sm">
+                    <i class="fas fa-sign-out-alt"></i> KELUAR
+                </button>
+            </div>
+        </aside>
+
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-10 hidden-view md:hidden" onclick="UI.toggleSidebar()"></div>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#F4F7FE]">
+            <!-- Header Mobile Toggle -->
+            <header class="bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between md:hidden z-0">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-[#0B2136] tracking-wide">SIM LOGISTIK</span>
+                </div>
+                <button onclick="UI.toggleSidebar()" class="text-gray-600 hover:text-gray-900 text-2xl p-1 cursor-pointer focus:outline-none"><i class="fas fa-bars"></i></button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 custom-scrollbar relative" id="dashboard-content">
+                <!-- Content Injected by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Edit Profil -->
+    <div id="modal-edit-profile" class="fixed inset-0 bg-black/60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden fade-in relative">
+            <button onclick="UI.closeModal('modal-edit-profile')" class="absolute top-3 right-3 text-gray-200 hover:text-white text-xl z-10 cursor-pointer"><i class="fas fa-times"></i></button>
+            <div class="bg-[#0B2136] p-4 text-white text-center">
+                <h3 class="font-bold text-lg">Profil & Foto Saya</h3>
+            </div>
+            <div class="p-5">
+                <form id="form-edit-profile" onsubmit="Auth.updateProfile(event)" class="space-y-4">
+                    <div class="flex flex-col items-center justify-center mb-4">
+                        <img id="edit-profile-preview" src="" class="h-24 w-24 rounded-full border-4 border-gray-200 object-cover shadow-md mb-2 bg-gray-100">
+                        <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full transition border">
+                            <i class="fas fa-camera mr-1"></i> Ganti Foto
+                            <input type="file" id="edit-profile-file" accept="image/*" class="hidden" onchange="Utils.previewImage(event, 'edit-profile-preview')">
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Nama Tampilan</label>
+                        <input type="text" id="edit-profile-name" required class="w-full border p-2 rounded bg-gray-50 focus:bg-white focus:border-blue-500 text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">No. WhatsApp</label>
+                        <input type="number" id="edit-profile-wa" required class="w-full border p-2 rounded bg-gray-50 focus:bg-white focus:border-blue-500 text-sm outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded shadow transition mt-2 cursor-pointer"><i class="fas fa-save mr-1"></i> Simpan Profil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Non-Rutin -->
+    <div id="modal-non-rutin" class="fixed inset-0 bg-black/60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto fade-in custom-scrollbar">
+            <div class="flex justify-between items-center p-4 border-b bg-orange-50 sticky top-0 z-10">
+                <h3 class="font-bold text-orange-800 text-lg"><i class="fas fa-star text-orange-500 mr-2"></i> Pengajuan Non-Rutin</h3>
+                <button onclick="UI.closeModal('modal-non-rutin')" class="text-gray-500 hover:text-red-500 text-xl cursor-pointer"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="form-non-rutin" onsubmit="Modules.submitNonRutin(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Nama Barang / Aset <span class="text-red-500">*</span></label>
+                    <input type="text" id="nr-name" required class="w-full border p-2 rounded focus:border-orange-500 bg-gray-50 outline-none">
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-1/3">
+                        <label class="block text-sm font-bold mb-1">Jumlah <span class="text-red-500">*</span></label>
+                        <input type="number" id="nr-qty" min="1" value="1" required class="w-full border p-2 rounded focus:border-orange-500 bg-gray-50 text-center font-bold outline-none">
+                    </div>
+                    <div class="w-2/3">
+                        <label class="block text-sm font-bold mb-1">Est. Harga Satuan (Rp) <span class="text-red-500">*</span></label>
+                        <input type="number" id="nr-price" required class="w-full border p-2 rounded focus:border-orange-500 bg-gray-50 font-mono outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Spesifikasi Detail <span class="text-red-500">*</span></label>
+                    <textarea id="nr-specs" rows="2" required placeholder="Merk, ukuran, warna, dll..." class="w-full border p-2 rounded focus:border-orange-500 bg-gray-50 text-sm outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Alasan Kebutuhan <span class="text-red-500">*</span></label>
+                    <textarea id="nr-reason" rows="2" required placeholder="Mengapa barang ini mendesak?" class="w-full border p-2 rounded focus:border-orange-500 bg-gray-50 text-sm outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Upload Foto Referensi (Wajib) <span class="text-red-500">*</span></label>
+                    <input type="file" id="nr-photo" required accept="image/*" class="w-full border p-2 rounded bg-gray-50 text-sm cursor-pointer outline-none" onchange="Utils.previewImage(event, 'nr-preview')">
+                    <div class="mt-2 hidden border rounded p-1 bg-gray-100" id="nr-preview-container">
+                        <img id="nr-preview" src="" class="max-h-32 object-contain mx-auto rounded shadow-sm">
+                    </div>
+                </div>
+                <div class="pt-3 border-t">
+                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg shadow-lg transition cursor-pointer"><i class="fas fa-paper-plane mr-2"></i> Ajukan ke Manager</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Detail Order (Printable) -->
+    <div id="modal-detail-order" class="fixed inset-0 bg-black/60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col fade-in">
+            <div class="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl print:hidden">
+                <h3 class="font-bold text-gray-800 text-lg"><i class="fas fa-file-invoice mr-2 text-blue-600"></i> Rincian Permintaan</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded text-sm font-bold cursor-pointer transition"><i class="fas fa-print"></i> Print</button>
+                    <button onclick="UI.closeModal('modal-detail-order')" class="text-gray-500 hover:text-red-500 text-xl px-2 cursor-pointer transition"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-white" id="print-area">
+                <div class="text-center mb-6 pb-4 border-b-2 border-gray-300 hidden print:block">
+                    <h2 class="text-2xl font-bold text-gray-900">RS KARTIKA HUSADA JATI ASIH</h2>
+                    <p class="text-gray-600">Sistem Informasi Manajemen Logistik</p>
+                    <h3 class="text-xl font-bold mt-4 underline">DOKUMEN PERMINTAAN BARANG</h3>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-6 bg-blue-50/50 p-4 rounded-lg border border-blue-100 print:border-none print:bg-transparent" id="detail-order-header">
+                </div>
+                
+                <div id="nr-detail-img-container" class="mb-6 hidden">
+                    <p class="font-bold text-sm mb-2 text-gray-700 bg-gray-100 p-2 rounded">Foto Referensi (Non-Rutin):</p>
+                    <div class="flex justify-center">
+                        <img id="nr-detail-img" src="" class="max-h-64 rounded border-2 border-dashed p-1 bg-white object-contain shadow-sm cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src, '_blank')">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded border border-gray-200 print:border-none">
+                    <table class="w-full text-sm text-left print:border-collapse">
+                        <thead class="bg-gray-100 text-gray-700 print:bg-transparent print:border-b-2">
+                            <tr>
+                                <th class="p-3 border print:border-gray-800">Nama Barang / Spesifikasi</th>
+                                <th class="p-3 border print:border-gray-800 text-center">Harga Sat.</th>
+                                <th class="p-3 border print:border-gray-800 text-center">Qty</th>
+                                <th class="p-3 border print:border-gray-800 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-order-body">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-16 flex justify-between px-10 hidden print:flex text-center">
+                    <div>
+                        <p class="mb-20">Pemohon,</p>
+                        <p class="font-bold underline uppercase" id="print-ttd-pemohon">Nama</p>
+                        <p class="text-xs text-gray-500 mt-1" id="print-ttd-unit">Unit</p>
+                    </div>
+                    <div>
+                        <p class="mb-20">Menyetujui,</p>
+                        <p class="font-bold underline uppercase">Manager Logistik</p>
+                        <p class="text-xs text-gray-500 mt-1">Pusat</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals Operator (Add/Edit) -->
+    <div id="modal-add-user" class="fixed inset-0 bg-black/60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full fade-in relative overflow-hidden">
+            <button onclick="UI.closeModal('modal-add-user')" class="absolute top-3 right-3 text-gray-200 hover:text-white text-xl z-10 cursor-pointer"><i class="fas fa-times"></i></button>
+            <div class="bg-[#1e40af] p-4 text-white text-center">
+                <h3 class="font-bold text-lg"><i class="fas fa-user-plus"></i> Tambah Akun Aktif</h3>
+                <p class="text-xs text-blue-200">Langsung aktif tanpa persetujuan</p>
+            </div>
+            <form id="form-add-user" onsubmit="Modules.opAddUser(event)" class="p-5 space-y-3">
+                <div>
+                    <label class="block text-xs font-bold mb-1">Jabatan</label>
+                    <select id="add-role" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none" onchange="Auth.toggleUnitSelect('add-role', 'add-unit-container')">
+                        <option value="">Pilih...</option>
+                        <option value="KEPALA UNIT">Kepala Unit</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="OPRATOR">Oprator (Admin)</option>
+                        <option value="DIREKTUR">Direktur</option>
+                    </select>
+                </div>
+                <div id="add-unit-container">
+                    <label class="block text-xs font-bold mb-1">Unit Kerja / Ruangan</label>
+                    <input type="text" id="add-unit" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Nama / Username</label>
+                    <input type="text" id="add-name" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">No WhatsApp</label>
+                    <input type="number" id="add-wa" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Sandi Awal</label>
+                    <input type="text" id="add-pass" required minlength="4" class="w-full border p-2 rounded text-sm bg-gray-50 font-mono text-blue-600 outline-none" value="12345">
+                </div>
+                <button type="submit" class="w-full bg-[#1e40af] hover:bg-blue-800 text-white font-bold py-2.5 rounded shadow transition mt-3 cursor-pointer">Daftarkan Sekarang</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edit User -->
+    <div id="modal-edit-user-op" class="fixed inset-0 bg-black/60 z-[60] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full fade-in relative overflow-hidden">
+            <button onclick="UI.closeModal('modal-edit-user-op')" class="absolute top-3 right-3 text-gray-200 hover:text-white text-xl z-10 cursor-pointer"><i class="fas fa-times"></i></button>
+            <div class="bg-blue-600 p-4 text-white text-center">
+                <h3 class="font-bold text-lg"><i class="fas fa-user-edit"></i> Edit Data Akun</h3>
+            </div>
+            <form id="form-edit-user-op" onsubmit="Modules.opSaveEditUser(event)" class="p-5 space-y-3">
+                <input type="hidden" id="edit-op-id">
+                <div>
+                    <label class="block text-xs font-bold mb-1">Jabatan</label>
+                    <select id="edit-op-role" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none" onchange="Auth.toggleUnitSelect('edit-op-role', 'edit-op-unit-container')">
+                        <option value="KEPALA UNIT">Kepala Unit</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="OPRATOR">Oprator (Admin)</option>
+                        <option value="DIREKTUR">Direktur</option>
+                    </select>
+                </div>
+                <div id="edit-op-unit-container">
+                    <label class="block text-xs font-bold mb-1">Unit Kerja / Ruangan</label>
+                    <input type="text" id="edit-op-unit" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Nama / Username</label>
+                    <input type="text" id="edit-op-name" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">No WhatsApp</label>
+                    <input type="number" id="edit-op-wa" required class="w-full border p-2 rounded text-sm bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Kata Sandi</label>
+                    <div class="relative">
+                        <input type="password" id="edit-op-pass" placeholder="Kosongkan jika tidak diganti" autocomplete="new-password" class="w-full border p-2 rounded text-sm bg-gray-50 pr-10 outline-none">
+                        <button type="button" onclick="UI.togglePassword('edit-op-pass', 'edit-op-eye')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 cursor-pointer">
+                            <i class="fas fa-eye" id="edit-op-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded shadow transition mt-3 cursor-pointer"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JS SCRIPTS -->
+        <!-- Modal Barcode -->
+    <div id="modal-barcode" class="fixed inset-0 bg-black/50 z-[90] hidden-view flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center fade-in">
+            <h3 id="barcode-name" class="font-bold text-gray-800 mb-4 text-sm uppercase"></h3>
+            <div class="overflow-x-auto"><svg id="barcode-svg" class="mx-auto"></svg></div>
+            <button onclick="UI.closeModal('modal-barcode')" class="mt-5 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2.5 rounded-lg border">Tutup</button>
+        </div>
+    </div>
+
+    <script src="assets/js/demo-api.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
